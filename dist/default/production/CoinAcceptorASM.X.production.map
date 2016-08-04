@@ -1,11 +1,12 @@
 MPLINK 5.08, LINKER
-Linker Map File - Created Thu Aug 04 16:48:58 2016
+Linker Map File - Created Thu Aug 04 18:28:05 2016
 
                                  Section Info
                   Section       Type    Address   Location Size(Bytes)
                 ---------  ---------  ---------  ---------  ---------
-                   .org_0       code   0x000000    program   0x000088
-                   .cinit    romdata   0x000088    program   0x000002
+                   .org_0       code   0x000000    program   0x000140
+                   .cinit    romdata   0x000140    program   0x000002
+                   .org_1       code   0x000200    program   0x000086
 .config_300000_BUILD/DEFAULT/PRODUCTION/COINMAI    romdata   0x300000    program   0x000001
 .config_300001_BUILD/DEFAULT/PRODUCTION/COINMAI    romdata   0x300001    program   0x000001
 .config_300002_BUILD/DEFAULT/PRODUCTION/COINMAI    romdata   0x300002    program   0x000001
@@ -24,27 +25,46 @@ Linker Map File - Created Thu Aug 04 16:48:58 2016
                               Program Memory Usage 
                                Start         End      
                            ---------   ---------      
-                            0x000000    0x000089      
+                            0x000000    0x000141      
+                            0x000200    0x000285      
                             0x300000    0x300003      
                             0x300005    0x300006      
                             0x300008    0x30000d      
-            150 out of 33048 program addresses used, program memory utilization is 0%
+            468 out of 33048 program addresses used, program memory utilization is 1%
 
 
 
                               Symbols - Sorted by Name
                      Name    Address   Location    Storage File                     
                 ---------  ---------  ---------  --------- ---------                
-                       d0   0x00006c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                       d1   0x000072    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                       d2   0x00007e    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                delay10ms   0x000068    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                delayW0ms   0x00007c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-            initialconfig   0x00004e    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     LCD1   0x000112    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                 LCDCover   0x0000d0    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+               LCDInsertC   0x0000e2    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+              LCDNInsertC   0x0000fa    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                  LEDsRed   0x00006a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+             _.org_0_0020   0x000020    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                  command   0x000082    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                   ctrlcd   0x000200    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                       d0   0x000124    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                       d1   0x00012a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                       d2   0x000136    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                delay10ms   0x000120    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                delayW0ms   0x000134    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+              enablepulse   0x00007a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+         initialconfigLCD   0x0000c2    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
                      main   0x000000    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                    read1   0x000040    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                    read2   0x000026    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-               readbutton   0x00000a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+              mainInsertC   0x00000c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg1   0x000206    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg2   0x00021c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg3   0x000232    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg4   0x000248    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg5   0x00025e    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                    pdata   0x000092    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                    read1   0x00005c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                    read2   0x000042    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+               readbutton   0x000026    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     set1   0x0000b4    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                 setLCDup   0x0000a2    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
 
 
 
@@ -52,14 +72,32 @@ Linker Map File - Created Thu Aug 04 16:48:58 2016
                      Name    Address   Location    Storage File                     
                 ---------  ---------  ---------  --------- ---------                
                      main   0x000000    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-               readbutton   0x00000a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                    read2   0x000026    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                    read1   0x000040    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-            initialconfig   0x00004e    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                delay10ms   0x000068    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                       d0   0x00006c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                       d1   0x000072    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                delayW0ms   0x00007c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
-                       d2   0x00007e    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+              mainInsertC   0x00000c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+             _.org_0_0020   0x000020    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+               readbutton   0x000026    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                    read2   0x000042    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                    read1   0x00005c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                  LEDsRed   0x00006a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+              enablepulse   0x00007a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                  command   0x000082    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                    pdata   0x000092    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                 setLCDup   0x0000a2    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     set1   0x0000b4    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+         initialconfigLCD   0x0000c2    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                 LCDCover   0x0000d0    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+               LCDInsertC   0x0000e2    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+              LCDNInsertC   0x0000fa    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     LCD1   0x000112    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                delay10ms   0x000120    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                       d0   0x000124    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                       d1   0x00012a    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                delayW0ms   0x000134    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                       d2   0x000136    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                   ctrlcd   0x000200    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg1   0x000206    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg2   0x00021c    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg3   0x000232    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg4   0x000248    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
+                     msg5   0x00025e    program     static C:\Users\Julian Santos\MPLABXProjects\CoinAcceptorASM.X\CoinMain.asm
 
 
