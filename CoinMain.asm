@@ -41,6 +41,9 @@
     uTcoin ; units of the total coin ingresed
     FLAG  ; if it has been ingresed a coin 
     FLAG2 ; flag if it has been produced a interrupt
+    time
+    utime
+    ttime
     ENDC
     
     org 0
@@ -74,7 +77,6 @@ choosebank: ;display and shows the messages when a coin has been ingresed
     call LEDsGreen
     call readbutton
     ;call send data to servo
-    goto $
     clrf Tcoin ; esta linea va en la anterior subrutina
     clrf FLAG
    ; goto $
@@ -98,52 +100,90 @@ greater9: ;-------------------------if the total count is greater than 1000
 ;****************************************show the money subrutine
 showMoney:
     clrf FLAG2
-    movlw low ncoin
-    movwf TBLPTRL
-    movlw high ncoin
-    movwf TBLPTRH
-    movlw upper ncoin
-    movwf TBLPTRU
+    call dirnum
     movlw FIRST4LINE
     call command
     movlw SIGNPESOS
     call pdata
     tstfsz dTcoin
     call showd ;show tens
-    
-    movlw low ncoin
-    movwf TBLPTRL
-    movlw high ncoin
-    movwf TBLPTRH
-    movlw upper ncoin
-    movwf TBLPTRU
+    call dirnum ; point numbers
     call showu ;show units
     
     movlw '0'
     call pdata
     movlw '0'
     call pdata
+    movlw ' '
+    call pdata
+    movlw ' '
+    call pdata
+    movlw ' '
+    call pdata
+    
+    movlw 0x05
+    mulwf Tcoin
+    movff PRODL,time
+    call separateT
+    call dirnum ; point numbers
+    movf ttime,W
+    call showdt ;show tens
+    movf utime,W
+    call dirnum ; point numbers
+    call showut ;show units
+    movlw 'm'
+    call pdata
+    movlw 'i'
+    call pdata
+    movlw 'n'
+    call pdata
     return
+
+separateT:
+    clrf utime
+    clrf ttime
+    movff time,utime
+sep1:    movlw 0x09
+    cpfsgt utime
+    return 
+    bra greater9t
+       
+greater9t: ;-------------------------if the total count is greater than 1000    
+    movlw 0x0A
+    subwf utime,F
+    incf ttime,F
+    bra sep1
     
 showd:  
     movf dTcoin,W ;decenas
+showdt:    
     addwf TBLPTRL
     btfsc STATUS,C
     incf TBLPTRH,F
     call show1
     return
-showu:  
+showu:    
     movf uTcoin,W ;decenas
+showut:    
     addwf TBLPTRL
     btfsc STATUS,C
     incf TBLPTRH,F
     call show1
     return
-    
 show1:
     TBLRD* ;move de data to TABLAT
     movf TABLAT,W
     call pdata
+    return
+    
+;****************************subrutien to point direction numbers
+dirnum:    
+    movlw low ncoin
+    movwf TBLPTRL
+    movlw high ncoin
+    movwf TBLPTRH
+    movlw upper ncoin
+    movwf TBLPTRU
     return
 ;***************************************************** READING BUTTONS SUBRUTINE    
 readbutton:
