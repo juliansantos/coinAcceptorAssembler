@@ -1,4 +1,4 @@
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  1
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  1
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -57,7 +57,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
                       00031   CONFIG  LVP = OFF             ; Single-Supply ICSP Enable bit (Single-Supply ICSP disabled)
                       00032   CONFIG  XINST = OFF           ; Extended Instruction Set Enable bit (Instruction set extension and Ind
                             exed Addressing mode disabled (Legacy mode))
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  2
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  2
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -111,275 +111,495 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
                       00008     #define DISPLAYON 0x0C
                       00009     #define DISPLAYOFF 0x0A
                       00010     #define FIRSTLINE 0x80
-                      00011     #define SECONDLINE 0xC0
-                      00012     #define THIRDLINE 0x94
-                      00013     #define FOURTHLINE 0xD4
-                      00014     #define MODE8BIT5x8M 0x38
-                      00015     
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  3
+                      00011     #define FIRST4LINE 0x84
+                      00012     #define SECONDLINE 0xC0
+                      00013     #define THIRDLINE 0x94
+                      00014     #define FOURTHLINE 0xD4
+                      00015     #define MODE8BIT5x8M 0x38
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  3
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00016  ;***************************************PREPROCESOR DIRECTIVES LEDS AND BUTTONS
-                      00017  #define Pulsador1 PORTB,0
-                      00018  #define Pulsador2 PORTB,1
-                      00019  #define Pulsador3 PORTB,2 
-                      00020  #define Red LATB,3
-                      00021  #define Green LATB,4
-                      00022  #define Blue LATB,5
-                      00023  #define LED1 LATA,3
-                      00024  #define LED2 LATA,4
-                      00025  #define LED3 LATA,2
-                      00026  #define portasdigital 0x0F
-                      00027  #define T3LED b'00111000'; COLORS
-                      00028   
-                      00029     CBLOCK 0x60
-  00000060            00030     delayvar:3
-  00000063            00031     blink ; number of times of blinking of a led
-  00000064            00032     buttonPushed ; button that has been pushed
-                      00033     ENDC
-                      00034     
-                      00035     org 0
-000000                00036 main:
-000000 EC?? F???      00037     call initialconfigLCD ; get ready MCU to send data to display
-000004 EC?? F???      00038     call setLCDup ; initial configuration for LCD
-000008 EC?? F???      00039     call LCDCover ;Main Cover
-                      00040     ;**** Here must be there the code initializate the interruption TO CALL READ BUTTON
-                      00041     ;call readbutton ;
-00000C                00042 mainInsertC: 
-00000C EC?? F???      00043     call LCDInsertC ;Insert a Coin
-000010 EC?? F???      00044     call LEDsRed ; initial configuration for use LEDs and Buttons
-000014 0E17           00045     movlw 0x17 
-000016 EC?? F???      00046     call delayW0ms ;70ms delay
-00001A EC?? F???      00047     call LCDNInsertC
-00001E D???           00048     bra mainInsertC
-                      00049   
-000020 EF?? F???      00050     goto $
-000024 D???           00051     bra main
-                      00052     
-                      00053 ;***************************************************** READING BUTTONS SUBRUTINE    
-000026                00054 readbutton:
-000026 0E0A           00055     movlw 0x0A
-000028 6F63           00056     movwf blink ; init var blink
-00002A EC?? F???      00057     call read1 ; return the number of the button pushed
-00002E 6F64           00058     movwf buttonPushed ; save the return var in this var
-000030 0E38           00059     movlw T3LED 
-000032 6E8A           00060     movwf LATB ;LEDsOFF 'colors'A
-000034 6A89           00061     clrf LATA ;OFF Anode
-000036 B164           00062     btfsc buttonPushed,0 ;test if button 1 has been pushed
-000038 8689           00063     bsf LED1
-00003A B364           00064     btfsc buttonPushed,1 ;test if button 2 has been pushed
-00003C 8889           00065     bsf LED2
-00003E B564           00066     btfsc buttonPushed,2 ;test if button 3 has been pushed
-000040 8489           00067     bsf LED3
-000042 7A8A           00068 read2:    btg Blue
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  4
+                      00016     #define SIGNPESOS  0x24
+                      00017     
+                      00018  ;***************************************PREPROCESOR DIRECTIVES LEDS AND BUTTONS
+                      00019  #define Pulsador1 PORTB,0
+                      00020  #define Pulsador2 PORTB,1
+                      00021  #define Pulsador3 PORTB,2 
+                      00022  #define Red LATB,3
+                      00023  #define Green LATB,4
+                      00024  #define Blue LATB,5
+                      00025  #define LED1 LATA,3
+                      00026  #define LED2 LATA,4
+                      00027  #define LED3 LATA,2
+                      00028  #define portasdigital 0x0F
+                      00029  #define T3LED b'00111000'; COLORS
+                      00030  
+                      00031  ;********************************************PREPROCESOR DIRECTIVES FOR CAPTURE
+                      00032 
+                      00033  
+                      00034 
+                      00035     CBLOCK 0x60
+  00000060            00036     delayvar:3
+  00000063            00037     blink ; number of times of blinking of a led
+  00000064            00038     buttonPushed ; button that has been pushed
+  00000065            00039     Tcoin ; total acumulate coins
+  00000066            00040     dTcoin ; tens of the total coin ingresed
+  00000067            00041     uTcoin ; units of the total coin ingresed
+  00000068            00042     FLAG  ; if it has been ingresed a coin 
+  00000069            00043     FLAG2 ; flag if it has been produced a interrupt
+                      00044     ENDC
+                      00045     
+                      00046     org 0
+000000 EF?? F???      00047     goto main
+                      00048     org 8
+000008 EF?? F???      00049     goto CCPISR
+                      00050     
+00000C                00051 main:
+00000C EC?? F???      00052     call initialconfigLCD ; get ready MCU to send data to display
+000010 EC?? F???      00053     call setLCDup ; initial configuration for LCD    
+000014 EC?? F???      00054     call LCDCover ;Main Cover
+000018 EC?? F???      00055     call initccp ; initialize interruption for CCP
+00001C EC?? F???      00056     call LEDsRed ; initial configuration for use LEDs 
+                      00057     ;**** Here must be there the code initializate the interruption TO CALL READ BUTTON
+                      00058     ;call readbutton ;
+000020                00059 mainInsertC: 
+000020 EC?? F???      00060     call LCDInsertC ;Insert a Coin
+000024 0E50           00061     movlw 0x50 
+000026 EC?? F???      00062     call delayW0ms ;170ms delay
+00002A EC?? F???      00063     call LCDNInsertC
+00002E 6765           00064     tstfsz Tcoin 
+000030 D???           00065     bra choosebank ; It has been added a coin 
+000032 D???           00066     bra mainInsertC
+                      00067     ;'initial config' mostrar en lcd el dinero que se ha ingresado=TIME,  seleccione el banco que desea 
+                            utilizar 1  2   3 
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  4
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-000044 0E1E           00069     movlw 0x1E
-000046 EC?? F???      00070     call delayW0ms
-00004A 2F63           00071     decfsz blink
-00004C D???           00072     bra read2
-00004E 0E38           00073     movlw T3LED 
-000050 6E8A           00074     movwf LATB ;turn off leds 'Colors'
-000052 8689           00075     bsf LED1
-000054 8889           00076     bsf LED2
-000056 8489           00077     bsf LED3
-000058 968A           00078     bcf Red
-00005A 0012           00079     return    
-00005C                00080 read1:;--------------------------;--------------------------This won't end until one button has been pus
+000034 D???           00068     bra main
+                      00069     
+000036                00070 choosebank: ;display and shows the messages when a coin has been ingresed
+000036 EC?? F???      00071     call LCDBank ; shows a message
+00003A EC?? F???      00072     call separateC ; separate a number
+00003E EC?? F???      00073     call showMoney
+000042 EC?? F???      00074     call LEDsGreen
+000046 EC?? F???      00075     call readbutton
+                      00076     ;call send data to servo
+00004A EF?? F???      00077     goto $
+00004E 6B65           00078     clrf Tcoin ; esta linea va en la anterior subrutina
+000050 6B68           00079     clrf FLAG
+                      00080    ; goto $
+000052 0012           00081     return
+                      00082 ;****************************Separation of units and tens of the count subrutine
+000054                00083 separateC:
+000054 6B67           00084     clrf uTcoin
+000056 6B66           00085     clrf dTcoin
+000058 5165           00086     movf Tcoin,W
+00005A 6F67           00087     movwf uTcoin
+00005C 0E09           00088 se1:    movlw 0x09
+00005E 6567           00089     cpfsgt uTcoin
+000060 0012           00090     return 
+000062 D???           00091     bra greater9
+                      00092        
+000064                00093 greater9: ;-------------------------if the total count is greater than 1000    
+000064 0E0A           00094     movlw 0x0A
+000066 5F67           00095     subwf uTcoin,F
+000068 2B66           00096     incf dTcoin,F
+00006A D???           00097     bra se1
+                      00098 ;****************************************show the money subrutine
+00006C                00099 showMoney:
+00006C 6B69           00100     clrf FLAG2
+00006E 0E??           00101     movlw low ncoin
+000070 6EF6           00102     movwf TBLPTRL
+000072 0E??           00103     movlw high ncoin
+000074 6EF7           00104     movwf TBLPTRH
+000076 0E??           00105     movlw upper ncoin
+000078 6EF8           00106     movwf TBLPTRU
+00007A 0E84           00107     movlw FIRST4LINE
+00007C EC?? F???      00108     call command
+000080 0E24           00109     movlw SIGNPESOS
+000082 EC?? F???      00110     call pdata
+000086 6766           00111     tstfsz dTcoin
+000088 EC?? F???      00112     call showd ;show tens
+                      00113     
+00008C 0E??           00114     movlw low ncoin
+00008E 6EF6           00115     movwf TBLPTRL
+000090 0E??           00116     movlw high ncoin
+000092 6EF7           00117     movwf TBLPTRH
+000094 0E??           00118     movlw upper ncoin
+000096 6EF8           00119     movwf TBLPTRU
+000098 EC?? F???      00120     call showu ;show units
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00121     
+00009C 0E30           00122     movlw '0'
+00009E EC?? F???      00123     call pdata
+0000A2 0E30           00124     movlw '0'
+0000A4 EC?? F???      00125     call pdata
+0000A8 0012           00126     return
+                      00127     
+0000AA                00128 showd:  
+0000AA 5166           00129     movf dTcoin,W ;decenas
+0000AC 26F6           00130     addwf TBLPTRL
+0000AE B0D8           00131     btfsc STATUS,C
+0000B0 2AF7           00132     incf TBLPTRH,F
+0000B2 EC?? F???      00133     call show1
+0000B6 0012           00134     return
+0000B8                00135 showu:  
+0000B8 5167           00136     movf uTcoin,W ;decenas
+0000BA 26F6           00137     addwf TBLPTRL
+0000BC B0D8           00138     btfsc STATUS,C
+0000BE 2AF7           00139     incf TBLPTRH,F
+0000C0 EC?? F???      00140     call show1
+0000C4 0012           00141     return
+                      00142     
+0000C6                00143 show1:
+0000C6 0008           00144     TBLRD* ;move de data to TABLAT
+0000C8 50F5           00145     movf TABLAT,W
+0000CA EC?? F???      00146     call pdata
+0000CE 0012           00147     return
+                      00148 ;***************************************************** READING BUTTONS SUBRUTINE    
+0000D0                00149 readbutton:
+0000D0 6968           00150     setf FLAG ; To indicate that has been ingresed a coin
+0000D2 0E0A           00151     movlw 0x0A
+0000D4 6F63           00152     movwf blink ; init var blink
+0000D6 EC?? F???      00153     call read1 ; return the number of the button pushed
+0000DA 6A93           00154     clrf TRISB ; data direction
+0000DC 6F64           00155     movwf buttonPushed ; save the return var in this. According to the bit 
+0000DE 0E38           00156     movlw T3LED 
+0000E0 6E8A           00157     movwf LATB ;LEDsOFF 'colors'A
+0000E2 6A89           00158     clrf LATA ;OFF Anode
+0000E4 B164           00159     btfsc buttonPushed,0 ;test if button 1 has been pushed
+0000E6 8689           00160     bsf LED1
+0000E8 B364           00161     btfsc buttonPushed,1 ;test if button 2 has been pushed
+0000EA 8889           00162     bsf LED2
+0000EC B564           00163     btfsc buttonPushed,2 ;test if button 3 has been pushed
+0000EE 8489           00164     bsf LED3
+0000F0 7A8A           00165 read2:    btg Blue ;blink the LED that represent the button that has been pushed
+0000F2 0E1E           00166     movlw 0x1E
+0000F4 EC?? F???      00167     call delayW0ms
+0000F8 2F63           00168     decfsz blink
+0000FA D???           00169     bra read2
+0000FC 0E38           00170     movlw T3LED 
+0000FE 6E8A           00171     movwf LATB ;turn off leds 'Colors'
+000100 8689           00172     bsf LED1 ;turn on LEDs of red color
+000102 8889           00173     bsf LED2
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+000104 8489           00174     bsf LED3
+000106 968A           00175     bcf Red
+000108 0012           00176     return    
+00010A                00177 read1:;--------------------------;--------------------------This won't end until one button has been pus
                             hed
-00005C B081           00081     btfsc Pulsador1 
-00005E 0C01           00082     retlw 1
-000060 B281           00083     btfsc Pulsador2
-000062 0C02           00084     retlw 2
-000064 B481           00085     btfsc Pulsador3
-000066 0C04           00086     retlw 4
-000068 D???           00087     bra read1
-                      00088     
-                      00089 ;****************************** INITIAL CONFIGURATION LEDs AND BUTTONS SUBRUTINE   
-00006A                00090 LEDsRed:
-                      00091     ;movlw b'00000111'                                 --! add this two lines to read push
-                      00092     ;movwf TRISB ; setting data direction of PORTA     --~!
-00006A 6A89           00093     clrf LATA ; setting initial value of LATA
-00006C 0E38           00094     movlw T3LED
-00006E 6E8A           00095     movwf LATB ;LEDsOFF
-000070 8689           00096     bsf LED1
-000072 8889           00097     bsf LED2
-000074 8489           00098     bsf LED3
-000076 968A           00099     bcf Red ; Turn On the LEDs in RED COLOR
-000078 0012           00100     return
-                      00101     
-                      00102 ;****************************************************************LCD SUBRUOTINES     
-00007A                00103 enablepulse: ;-------------------------------------For Latching data in the LCD 
-00007A 8289           00104     bsf E ;Rising Edge
-00007C 0000           00105     nop
-00007E 9289           00106     bcf E ;Falling Edge
-000080 0012           00107     return 
-                      00108     
-000082                00109 command:;---------------------------------------------------;-------------------------------------------
+00010A AF69           00178     btfss FLAG2,7 ; 7 JAJA LOL XD
+00010C D???           00179     bra rr1
+00010E 6A93           00180     clrf TRISB
+000110 EC?? F???      00181     call separateC 
+000114 EC?? F???      00182     call showMoney
+000118 0E07           00183     movlw b'00000111'                                 ;
+00011A 6E93           00184     movwf TRISB ; setting data direction of PORTB     --~!
+00011C EC?? F???      00185     call LEDsGreen
+000120                00186 rr1:   
+000120 B081           00187     btfsc Pulsador1 
+000122 0C01           00188     retlw 1
+000124 B281           00189     btfsc Pulsador2
+000126 0C02           00190     retlw 2
+000128 B481           00191     btfsc Pulsador3
+00012A 0C04           00192     retlw 4
+00012C D???           00193     bra read1
+                      00194     
+                      00195 ;****************************** INITIAL CONFIGURATION LEDs AND BUTTONS SUBRUTINE   
+00012E                00196 LEDsRed:
+                      00197     ;clrf LATA ; setting initial value of LATA
+00012E 0E38           00198     movlw T3LED
+000130 6E8A           00199     movwf LATB ;LEDsOFF
+000132 8689           00200     bsf LED1
+000134 8889           00201     bsf LED2
+000136 8489           00202     bsf LED3
+000138 968A           00203     bcf Red ; Turn On the LEDs in RED COLOR
+00013A 0012           00204     return
+                      00205 
+00013C                00206 LEDsGreen:
+00013C 6A89           00207     clrf LATA ; setting initial value of LATA
+00013E 0E38           00208     movlw T3LED
+000140 6E8A           00209     movwf LATB ;LEDsOFF
+000142 8689           00210     bsf LED1
+000144 8889           00211     bsf LED2
+000146 8489           00212     bsf LED3
+000148 988A           00213     bcf Green ; Turn On the LEDs in RED COLOR
+00014A 0012           00214     return    
+                      00215     
+                      00216 ;****************************************************************LCD SUBRUOTINES     
+00014C                00217 enablepulse: ;-------------------------------------For Latching data in the LCD 
+00014C 8289           00218     bsf E ;Rising Edge
+00014E 0000           00219     nop
+000150 9289           00220     bcf E ;Falling Edge
+000152 0012           00221     return 
+                      00222     
+000154                00223 command:;---------------------------------------------------;-------------------------------------------
                             --------For execute commands
-000082 6E8A           00110     movwf DATAB
-000084 9089           00111     bcf RS
-000086 EC?? F???      00112     call enablepulse ;To latch data 
-00008A 0E02           00113     movlw 0x02 
-00008C EC?? F???      00114     call delayW0ms ;Delay for 20ms    
-000090 0012           00115     return
-                      00116 
-000092                00117 pdata:;----------------------------------------------------;--------------------------------------------
+000154 6E8A           00224     movwf DATAB
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  7
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+000156 9089           00225     bcf RS
+000158 EC?? F???      00226     call enablepulse ;To latch data 
+00015C 0E01           00227     movlw 0x01 
+00015E EC?? F???      00228     call delayW0ms ;Delay for 20ms    
+000162 0012           00229     return
+                      00230 
+000164                00231 pdata:;----------------------------------------------------;--------------------------------------------
                             --------For print data in LCD
-000092 6E8A           00118     movwf DATAB
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  5
-
-
-LOC  OBJECT CODE     LINE SOURCE TEXT
-  VALUE
-
-000094 8089           00119     bsf RS
-000096 EC?? F???      00120     call enablepulse ;To latch data 
-00009A 0E02           00121     movlw 0x02 
-00009C EC?? F???      00122     call delayW0ms ;Delay for 20ms  
-0000A0 0012           00123     return
-                      00124 
-0000A2                00125 setLCDup:;--------------------------------------------------;-------------------------------------------
+000164 6E8A           00232     movwf DATAB
+000166 8089           00233     bsf RS
+000168 EC?? F???      00234     call enablepulse ;To latch data 
+00016C 0E01           00235     movlw 0x01 
+00016E EC?? F???      00236     call delayW0ms ;Delay for 20ms  
+000172 0012           00237     return
+                      00238 
+000174                00239 setLCDup:;--------------------------------------------------;-------------------------------------------
                             -------For Initializate LCD    
-0000A2 0E02           00126     movlw 0x02
-0000A4 EC?? F???      00127     call delayW0ms ; Wait 10ms for Start up of LCD
-0000A8 0E??           00128     movlw low ctrlcd ;To load the address 0x000100
-0000AA 6EF6           00129     movwf TBLPTRL
-0000AC 0E??           00130     movlw high ctrlcd
-0000AE 6EF7           00131     movwf TBLPTRH
-0000B0 0E??           00132     movlw upper ctrlcd
-0000B2 6EF8           00133     movwf TBLPTRU
-                      00134 
-0000B4 0009           00135 set1:    TBLRD*+
-0000B6 50F5           00136     movf TABLAT,W   
-0000B8 B4D8           00137     btfsc  STATUS,Z 
-0000BA 0012           00138     return
-0000BC EC?? F???      00139     call command ;execute the command
-0000C0 D???           00140     bra set1
-                      00141     
-                      00142 ;***************************************SET UP AND INITIALIZATION MCU SUBROUTINE     
-0000C2                00143 initialconfigLCD: 
-0000C2 0E0F           00144     movlw portsAsDigital
-0000C4 6EC1           00145     movwf ADCON1 ;Ports as digital instead of analogic
-0000C6 6A92           00146     clrf TRISA  ;PortA as digital output
-0000C8 6A89           00147     clrf LATA  ;Initializing PortA = '0'
-0000CA 6A93           00148     clrf TRISB ;PortB as digital output 
-0000CC 6A8A           00149     clrf LATB ;Initializing PortB 
-0000CE 0012           00150     return 
-                      00151     
-                      00152 ;****************************************************************INITIAL MESSAGE    
-0000D0                00153 LCDCover:   
-                      00154     ;*-------------------Show Welcome Line 1
-0000D0 0E??           00155     movlw low msg1
-0000D2 6EF6           00156     movwf TBLPTRL
-0000D4 0E??           00157     movlw high msg1
-0000D6 6EF7           00158     movwf TBLPTRH
-0000D8 0E??           00159     movlw upper msg1
-0000DA 6EF8           00160     movwf TBLPTRU
-0000DC EC?? F???      00161     call LCD1
-0000E0 0012           00162     return
-                      00163     
-                      00164     ;*------------------Show  Please insert a coin Line 3
-0000E2                00165 LCDInsertC:
-0000E2 0E94           00166     movlw THIRDLINE ;move to the third line
-0000E4 EC?? F???      00167     call command
-                      00168     
-0000E8 0E??           00169     movlw low msg2
-0000EA 6EF6           00170     movwf TBLPTRL
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  6
+000174 0E02           00240     movlw 0x02
+000176 EC?? F???      00241     call delayW0ms ; Wait 10ms for Start up of LCD
+00017A 0E??           00242     movlw low ctrlcd ;To load the address 0x000100
+00017C 6EF6           00243     movwf TBLPTRL
+00017E 0E??           00244     movlw high ctrlcd
+000180 6EF7           00245     movwf TBLPTRH
+000182 0E??           00246     movlw upper ctrlcd
+000184 6EF8           00247     movwf TBLPTRU
+                      00248 
+000186 0009           00249 set1:    TBLRD*+
+000188 50F5           00250     movf TABLAT,W   
+00018A B4D8           00251     btfsc  STATUS,Z 
+00018C 0012           00252     return
+00018E EC?? F???      00253     call command ;execute the command
+000192 D???           00254     bra set1
+                      00255     
+                      00256 ;***************************************SET UP AND INITIALIZATION MCU SUBROUTINE     
+000194                00257 initialconfigLCD: 
+000194 0E0F           00258     movlw portsAsDigital
+000196 6EC1           00259     movwf ADCON1 ;Ports as digital instead of analogic
+000198 6A92           00260     clrf TRISA  ;PortA as digital output
+00019A 6A89           00261     clrf LATA  ;Initializing PortA = '0'
+00019C 6A93           00262     clrf TRISB ;PortB as digital output 
+00019E 6A8A           00263     clrf LATB ;Initializing PortB 
+0001A0 0E04           00264     movlw b'00000100'
+0001A2 6E94           00265     movwf TRISC ; data direction PortC
+0001A4 6A8B           00266     clrf LATC
+0001A6 0012           00267     return 
+                      00268     
+                      00269 ;****************************************************************INITIAL MESSAGE    
+0001A8                00270 LCDCover:   
+                      00271     ;*-------------------Show Welcome Line 1
+0001A8 0E??           00272     movlw low msg1
+0001AA 6EF6           00273     movwf TBLPTRL
+0001AC 0E??           00274     movlw high msg1
+0001AE 6EF7           00275     movwf TBLPTRH
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  8
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-0000EC 0E??           00171     movlw high msg2
-0000EE 6EF7           00172     movwf TBLPTRH
-0000F0 0E??           00173     movlw upper msg2
-0000F2 6EF8           00174     movwf TBLPTRU
-0000F4 EC?? F???      00175     call LCD1
-0000F8 0012           00176     return
-                      00177     
-0000FA                00178 LCDNInsertC:
-0000FA 0E94           00179     movlw THIRDLINE ;move to the third line
-0000FC EC?? F???      00180     call command
-                      00181     
-000100 0E??           00182     movlw low msg3
-000102 6EF6           00183     movwf TBLPTRL
-000104 0E??           00184     movlw high msg3
-000106 6EF7           00185     movwf TBLPTRH
-000108 0E??           00186     movlw upper msg3
-00010A 6EF8           00187     movwf TBLPTRU
-00010C EC?? F???      00188     call LCD1
-000110 0012           00189     return
-                      00190     
-000112 0009           00191 LCD1: tblrd*+
-000114 50F5           00192     movf TABLAT,W
-000116 B4D8           00193     btfsc STATUS,Z
-000118 0012           00194     return
-00011A EC?? F???      00195     call pdata 
-00011E D???           00196     bra LCD1
-                      00197     
-                      00198 ;***************************************************************DELAY SUBRUTINES   
-000120                00199 delay10ms:  ;4MHz frecuency oscillator
-000120 0E54           00200     movlw d'84'  ;A Value
-000122 6F61           00201     movwf delayvar+1
-000124 0E26           00202 d0:   movlw d'38' ;B Value
-000126 6F60           00203     movwf delayvar  
-000128 0000           00204     nop
-00012A 2F60           00205 d1:  decfsz delayvar,F
-00012C D???           00206     bra d1
-00012E 2F61           00207     decfsz delayvar+1,F
-000130 D???           00208     bra d0      
-000132 0012           00209     return ;2+1+1+A[1+1+1+B+1+2B-2]+A+1+2A-2+2 => 5+A[5+3B]
-                      00210     
-000134                00211 delayW0ms: ;It is neccesary load a properly value in the acumulator before use this subrutine
-000134 6F62           00212     movwf delayvar+2
-000136 EC?? F???      00213 d2:    call delay10ms
-00013A 2F62           00214     decfsz delayvar+2,F
-00013C D???           00215     bra d2
-00013E 0012           00216     return 
-                      00217     
-                      00218 ;********************************************************************DATA VECTOR
-                      00219     org 0x200
-000200 0C38 8001 0000 00220 ctrlcd:  db  MODE8BIT5x8M,DISPLAYON,CLEARSCREEN,FIRSTLINE,0  ;Comandos a ejecutar 
-000206 2020 2020 2020 00221 msg1:    da "      WELCOME!      ",0                        
+0001B0 0E??           00276     movlw upper msg1
+0001B2 6EF8           00277     movwf TBLPTRU
+0001B4 EC?? F???      00278     call LCD1
+0001B8 0012           00279     return
+                      00280     
+                      00281     ;*------------------Show  Please insert a coin Line 3
+0001BA                00282 LCDInsertC:
+0001BA 0E94           00283     movlw THIRDLINE ;move to the third line
+0001BC EC?? F???      00284     call command
+                      00285     
+0001C0 0E??           00286     movlw low msg2
+0001C2 6EF6           00287     movwf TBLPTRL
+0001C4 0E??           00288     movlw high msg2
+0001C6 6EF7           00289     movwf TBLPTRH
+0001C8 0E??           00290     movlw upper msg2
+0001CA 6EF8           00291     movwf TBLPTRU
+0001CC EC?? F???      00292     call LCD1
+0001D0 0012           00293     return
+                      00294     
+0001D2                00295 LCDNInsertC:
+0001D2 0E94           00296     movlw THIRDLINE ;move to the third line
+0001D4 EC?? F???      00297     call command
+                      00298     
+0001D8 0E??           00299     movlw low msg3
+0001DA 6EF6           00300     movwf TBLPTRL
+0001DC 0E??           00301     movlw high msg3
+0001DE 6EF7           00302     movwf TBLPTRH
+0001E0 0E??           00303     movlw upper msg3
+0001E2 6EF8           00304     movwf TBLPTRU
+0001E4 EC?? F???      00305     call LCD1
+0001E8 0012           00306     return
+                      00307 
+0001EA                00308 LCDBank:
+0001EA 0E94           00309     movlw THIRDLINE ;move to the third line
+0001EC EC?? F???      00310     call command
+                      00311     
+0001F0 0E??           00312     movlw low msg4
+0001F2 6EF6           00313     movwf TBLPTRL
+0001F4 0E??           00314     movlw high msg4
+0001F6 6EF7           00315     movwf TBLPTRH
+0001F8 0E??           00316     movlw upper msg4
+0001FA 6EF8           00317     movwf TBLPTRU
+0001FC EC?? F???      00318     call LCD1
+                      00319     
+000200 0ED4           00320     movlw FOURTHLINE ;move to the third line
+000202 EC?? F???      00321     call command
+                      00322     
+000206 0E??           00323     movlw low msg5
+000208 6EF6           00324     movwf TBLPTRL
+00020A 0E??           00325     movlw high msg5
+00020C 6EF7           00326     movwf TBLPTRH
+00020E 0E??           00327     movlw upper msg5
+000210 6EF8           00328     movwf TBLPTRU
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE  9
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+000212 EC?? F???      00329     call LCD1
+000216 0012           00330     return 
+                      00331     
+000218 0009           00332 LCD1: tblrd*+
+00021A 50F5           00333     movf TABLAT,W
+00021C B4D8           00334     btfsc STATUS,Z
+00021E 0012           00335     return
+000220 EC?? F???      00336     call pdata 
+000224 D???           00337     bra LCD1
+                      00338 ;*************************************INITIAL CONFIGURATION CCP MODULE SUBRUTINE
+000226                00339 initccp:
+000226 0E04           00340     movlw 0x04 ;capture mode, falling edge
+000228 6EBD           00341     movwf CCP1CON 
+00022A 6AB1           00342     clrf T3CON
+00022C 8494           00343     bsf TRISC,RC2 ; CCP1 as Input 
+00022E 949E           00344     bcf PIR1,CCP1IF
+000230 849D           00345     bsf PIE1,CCP1IE; Enabling interrupt for CCP1
+000232 8CF2           00346     bsf INTCON,PEIE; Enabling peripheral interrupts
+000234 8EF2           00347     bsf INTCON,GIE; Enabling global interruptions
+000236 6B65           00348     clrf Tcoin
+000238 6B68           00349     clrf FLAG
+00023A 0012           00350     return
+                      00351 ;***************************************************CCP INTERRUPT SERVICE RUTINE    
+00023C                00352 CCPISR:
+00023C 6969           00353     setf FLAG2
+00023E 6A93           00354     clrf TRISB ; In the case of button input
+000240 0E19           00355     movlw 0x19
+000242 EC?? F???      00356     call delayW0ms ; 25ms delay subrutine
+000246 949E           00357     bcf PIR1,CCP1IF
+000248 0E19           00358     movlw 0x19
+00024A EC?? F???      00359     call delayW0ms ; 25ms delay subrutine
+                      00360 ;    movlw CLEARSCREEN
+                      00361 ;    call command
+00024E A49E           00362     btfss PIR1,CCP1IF
+000250 D???           00363     bra S200 ; Coin value =500 
+000252 B49E           00364     btfsc PIR1,CCP1IF
+000254 D???           00365     bra S500; Coin value = 200
+                      00366       
+000256                00367 S500;---------------------------------------------------------500 COIN SUBRUTINE
+000256 7C8B           00368     btg LATC,RC6
+000258 0E05           00369     movlw 0x05
+00025A 2765           00370     addwf Tcoin,F
+00025C 949E           00371     bcf PIR1,CCP1IF ; Clear Flag CCP1 Module
+00025E B368           00372     btfsc FLAG,1
+000260 EC?? F???      00373     call setbutton
+000264 0011           00374     retfie 1 ; restore W and Status register from shadow resgisters
+                      00375     
+000266                00376 S200;---------------------------------------------------------200 COIN SUBRUTINE
+000266 7C8B           00377     btg LATC,RC6
+000268 0E02           00378     movlw 0x02
+00026A 2765           00379     addwf Tcoin,F
+00026C 949E           00380     bcf PIR1,CCP1IF ; Clear Flag CCP1 Module
+00026E B368           00381     btfsc FLAG,1
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 10
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+000270 EC?? F???      00382     call setbutton
+000274 0011           00383     retfie 1 ;restore W and Status register from shadow registers
+                      00384 
+000276                00385 setbutton:
+000276 0E07           00386     movlw b'00000111'                      
+000278 6E93           00387     movwf TRISB ; setting data direction of PORTB
+00027A 0012           00388     return
+                      00389     
+                      00390 ;***************************************************************DELAY SUBRUTINES   
+00027C                00391 delay10ms:  ;4MHz frecuency oscillator
+00027C 0E54           00392     movlw d'84'  ;A Value
+00027E 6F61           00393     movwf delayvar+1
+000280 0E26           00394 d0:   movlw d'38' ;B Value
+000282 6F60           00395     movwf delayvar  
+000284 0000           00396     nop
+000286 2F60           00397 d1:  decfsz delayvar,F
+000288 D???           00398     bra d1
+00028A 2F61           00399     decfsz delayvar+1,F
+00028C D???           00400     bra d0      
+00028E 0012           00401     return ;2+1+1+A[1+1+1+B+1+2B-2]+A+1+2A-2+2 => 5+A[5+3B]
+                      00402     
+000290                00403 delayW0ms: ;It is neccesary load a properly value in the acumulator before use this subrutine
+000290 6F62           00404     movwf delayvar+2
+000292 EC?? F???      00405 d2:    call delay10ms
+000296 2F62           00406     decfsz delayvar+2,F
+000298 D???           00407     bra d2
+00029A 0012           00408     return 
+                      00409     
+                      00410 ;********************************************************************DATA VECTOR
+                      00411     org 0x300
+000300 0C38 8001 0000 00412 ctrlcd:  db  MODE8BIT5x8M,DISPLAYON,CLEARSCREEN,FIRSTLINE,0  ;Comandos a ejecutar 
+000306 2020 2020 2020 00413 msg1:    da "      WELCOME!      ",0                        
        4557 434C 4D4F 
        2145 2020 2020 
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  7
-
-
-LOC  OBJECT CODE     LINE SOURCE TEXT
-  VALUE
-
        2020 0000 
-00021C 4C50 4145 4553 00222 msg2:    da "PLEASE INSERT A COIN",0    
+00031C 4C50 4145 4553 00414 msg2:    da "PLEASE INSERT A COIN",0    
        4920 534E 5245 
        2054 2041 4F43 
        4E49 0000 
-000232 2020 2020 2020 00223 msg3:    da "                    ",0
+000332 2020 2020 2020 00415 msg3:    da "                    ",0
        2020 2020 2020 
        2020 2020 2020 
        2020 0000 
-000248 554A 494C 4E41 00224 msg4:    da "JULIAN SANTOS SA    ",0  
-       5320 4E41 4F54 
-       2053 4153 2020 
+000348 2020 2020 4843 00416 msg4:    da "    CHOOSE A SEAT   ",0  
+       4F4F 4553 4120 
+       5320 4145 2054 
        2020 0000 
-00025E 5247 4341 4149 00225 msg5:    da "GRACIAS POR UTILIZAR NUESTRO SERVICIO",0   
-       2053 4F50 2052 
-       5455 4C49 5A49 
-       5241 4E20 4555 
-       5453 4F52 5320 
-       5245 4956 4943 
-       004F 0000 
-                      00226  END
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  8
+00035E 2020 3120 2020 00417 msg5:    da "   1      2      3  ",0 
+       2020 2020 2032 
+       2020 2020 3320 
+       2020 0000 
+000374 5420 4148 4B4E 00418 msg6:    da " THANKS             ",0
+       2053 2020 2020 
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 11
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+       2020 2020 2020 
+       2020 0000 
+00038A 3130 3332 3534 00419 ncoin:   da "0123456789"    
+       3736 3938 
+                      00420  END
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 12
 
 
 SYMBOL TABLE
@@ -438,7 +658,7 @@ BRG16                             00000003
 BRGH                              00000002
 BSR                               00000FE0
 BTOEE                             00000004
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE  9
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 13
 
 
 SYMBOL TABLE
@@ -472,6 +692,7 @@ CCP2M0                            00000000
 CCP2M1                            00000001
 CCP2M2                            00000002
 CCP2M3                            00000003
+CCPISR                            0000023C
 CCPR1                             00000FBE
 CCPR1H                            00000FBF
 CCPR1L                            00000FBE
@@ -496,13 +717,13 @@ CMIE                              00000006
 CMIF                              00000006
 CMIP                              00000006
 CRC16EE                           00000002
-CRC16EF                           00000002
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 10
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 14
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+CRC16EF                           00000002
 CRC5EE                            00000001
 CRC5EF                            00000001
 CREN                              00000004
@@ -555,13 +776,13 @@ EEIP                              00000004
 EEPGD                             00000007
 ENDP0                             00000003
 ENDP1                             00000004
-ENDP2                             00000005
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 11
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 15
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+ENDP2                             00000005
 ENDP3                             00000006
 EPCONDIS                          00000003
 EPHSHK                            00000004
@@ -570,7 +791,10 @@ EPOUTEN                           00000002
 EPSTALL                           00000000
 FAST                              00000001
 FERR                              00000002
+FIRST4LINE                        0x84
 FIRSTLINE                         0x80
+FLAG                              00000068
+FLAG2                             00000069
 FLTS                              00000002
 FOURTHLINE                        0xD4
 FREE                              00000004
@@ -611,16 +835,16 @@ HLVDIF                            00000002
 HLVDIN                            00000005
 HLVDIP                            00000002
 HLVDL0                            00000000
-HLVDL1                            00000001
-HLVDL2                            00000002
-HLVDL3                            00000003
-I2C_DAT                           00000005
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 12
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 16
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+HLVDL1                            00000001
+HLVDL2                            00000002
+HLVDL3                            00000003
+I2C_DAT                           00000005
 I2C_READ                          00000002
 I2C_START                         00000003
 I2C_STOP                          00000004
@@ -670,16 +894,16 @@ LATA0                             00000000
 LATA1                             00000001
 LATA2                             00000002
 LATA3                             00000003
-LATA4                             00000004
-LATA5                             00000005
-LATA6                             00000006
-LATB                              00000F8A
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 13
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 17
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+LATA4                             00000004
+LATA5                             00000005
+LATA6                             00000006
+LATB                              00000F8A
 LATB0                             00000000
 LATB1                             00000001
 LATB2                             00000002
@@ -694,14 +918,16 @@ LATC1                             00000001
 LATC2                             00000002
 LATC6                             00000006
 LATC7                             00000007
-LCD1                              00000112
-LCDCover                          000000D0
-LCDInsertC                        000000E2
-LCDNInsertC                       000000FA
+LCD1                              00000218
+LCDBank                           000001EA
+LCDCover                          000001A8
+LCDInsertC                        000001BA
+LCDNInsertC                       000001D2
 LED1                              LATA,3
 LED2                              LATA,4
 LED3                              LATA,2
-LEDsRed                           0000006A
+LEDsGreen                         0000013C
+LEDsRed                           0000012E
 LVDCON                            00000FD2
 LVDEN                             00000004
 LVDIE                             00000002
@@ -727,18 +953,18 @@ NOT_PD                            00000002
 NOT_POR                           00000001
 NOT_RBPU                          00000007
 NOT_RI                            00000004
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 18
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 NOT_T1SYNC                        00000002
 NOT_T3SYNC                        00000002
 NOT_TO                            00000003
 NOT_W                             00000002
 NOT_WRITE                         00000002
 OERR                              00000001
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 14
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 OSC2                              00000006
 OSCCON                            00000FD3
 OSCFIE                            00000007
@@ -786,18 +1012,18 @@ POSTINC0                          00000FEE
 POSTINC1                          00000FE6
 POSTINC2                          00000FDE
 PPB0                              00000000
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 19
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 PPB1                              00000001
 PPBI                              00000001
 PPBRST                            00000006
 PR2                               00000FCB
 PREINC0                           00000FEC
 PREINC1                           00000FE4
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 15
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 PREINC2                           00000FDC
 PROD                              00000FF3
 PRODH                             00000FF4
@@ -845,18 +1071,18 @@ RCMT                              00000006
 RCON                              00000FD0
 RCREG                             00000FAE
 RCSTA                             00000FAB
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 20
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 RD                                00000000
 RD16                              00000007
 RE3                               00000003
 READ_WRITE                        00000002
 RESUME                            00000002
 RI                                00000004
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 16
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 RS                                LATA,0
 RSEN                              00000001
 RX                                00000007
@@ -867,6 +1093,8 @@ R_NOT_W                           00000002
 R_W                               00000002
 Red                               LATB,3
 S                                 00000003
+S200                              00000266
+S500                              00000256
 SBOREN                            00000006
 SCKP                              00000004
 SCS0                              00000000
@@ -875,6 +1103,7 @@ SE0                               00000005
 SECONDLINE                        0xC0
 SEN                               00000000
 SENDB                             00000003
+SIGNPESOS                         0x24
 SMP                               00000007
 SOFIE                             00000006
 SOFIF                             00000006
@@ -901,6 +1130,12 @@ STALLIF                           00000005
 STATUS                            00000FD8
 STKFUL                            00000007
 STKOVF                            00000007
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 21
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 STKPTR                            00000FFC
 STKPTR0                           00000000
 STKPTR1                           00000001
@@ -910,12 +1145,6 @@ STKPTR4                           00000004
 STKUNF                            00000006
 SUSPND                            00000001
 SWDTE                             00000000
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 17
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 SWDTEN                            00000000
 SYNC                              00000004
 T08BIT                            00000006
@@ -960,6 +1189,12 @@ TBLPTRL                           00000FF6
 TBLPTRU                           00000FF8
 THIRDLINE                         0x94
 TMR0                              00000FD6
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 22
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 TMR0H                             00000FD7
 TMR0IE                            00000005
 TMR0IF                            00000002
@@ -969,12 +1204,6 @@ TMR0ON                            00000007
 TMR1                              00000FCE
 TMR1CS                            00000001
 TMR1H                             00000FCF
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 18
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 TMR1IE                            00000000
 TMR1IF                            00000000
 TMR1IP                            00000000
@@ -1019,6 +1248,12 @@ TRISB4                            00000004
 TRISB5                            00000005
 TRISB6                            00000006
 TRISB7                            00000007
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 23
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 TRISC                             00000F94
 TRISC0                            00000000
 TRISC1                            00000001
@@ -1028,12 +1263,6 @@ TRISC7                            00000007
 TRMT                              00000001
 TRNIE                             00000003
 TRNIF                             00000003
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 19
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 TUN0                              00000000
 TUN1                              00000001
 TUN2                              00000002
@@ -1049,6 +1278,7 @@ TXIF                              00000004
 TXIP                              00000004
 TXREG                             00000FAD
 TXSTA                             00000FAC
+Tcoin                             00000065
 UA                                00000001
 UADDR                             00000F6E
 UCFG                              00000F6F
@@ -1077,6 +1307,12 @@ UFRM                              00000F66
 UFRMH                             00000F67
 UFRML                             00000F66
 UIE                               00000F69
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 24
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 UIR                               00000F68
 UOEMON                            00000006
 UPUEN                             00000004
@@ -1087,12 +1323,6 @@ USBIE                             00000005
 USBIF                             00000005
 USBIP                             00000005
 USTAT                             00000F6C
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 20
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 UTEYE                             00000007
 UTRDIS                            00000003
 VCFG0                             00000004
@@ -1109,7 +1339,7 @@ WREN                              00000002
 WRERR                             00000003
 WUE                               00000001
 Z                                 00000002
-_.org_0_0020                      00000020
+_.org_1_004A                      0000004A
 _BORV_0_2L                        000000E7
 _BORV_1_2L                        000000EF
 _BORV_2_2L                        000000F7
@@ -1136,6 +1366,12 @@ _CP0_OFF_5L                       000000FF
 _CP0_ON_5L                        000000FE
 _CP1_OFF_5L                       000000FF
 _CP1_ON_5L                        000000FD
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 25
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 _CP2_OFF_5L                       000000FF
 _CP2_ON_5L                        000000FB
 _CP3_OFF_5L                       000000FF
@@ -1146,12 +1382,6 @@ _CPD_OFF_5H                       000000FF
 _CPD_ON_5H                        0000007F
 _CPUDIV_OSC1_PLL2_1L              000000E7
 _CPUDIV_OSC2_PLL3_1L              000000EF
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 21
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 _CPUDIV_OSC3_PLL4_1L              000000F7
 _CPUDIV_OSC4_PLL6_1L              000000FF
 _DEBUG_OFF_4L                     000000FF
@@ -1195,6 +1425,12 @@ _IESO_ON_1H                       000000FF
 _LPT1OSC_OFF_3H                   000000FB
 _LPT1OSC_ON_3H                    000000FF
 _LVP_OFF_4L                       000000FB
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 26
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 _LVP_ON_4L                        000000FF
 _MCLRE_OFF_3H                     0000007F
 _MCLRE_ON_3H                      000000FF
@@ -1205,12 +1441,6 @@ _PLLDIV_12_1L                     000000FF
 _PLLDIV_1_1L                      000000F8
 _PLLDIV_2_1L                      000000F9
 _PLLDIV_3_1L                      000000FA
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 22
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 _PLLDIV_4_1L                      000000FB
 _PLLDIV_5_1L                      000000FC
 _PLLDIV_6_1L                      000000FD
@@ -1254,42 +1484,57 @@ _WRTC_OFF_6H                      000000FF
 _WRTC_ON_6H                       000000DF
 _WRTD_OFF_6H                      000000FF
 _WRTD_ON_6H                       0000007F
-_XINST_OFF_4L                     000000BF
-_XINST_ON_4L                      000000FF
-__18F2550                         00000001
-blink                             00000063
-buttonPushed                      00000064
-command                           00000082
-ctrlcd                            00000200
-d0                                00000124
-d1                                0000012A
-d2                                00000136
-MPASM 5.68                      COINMAIN.ASM   8-4-2016  18:28:04         PAGE 23
+MPASM 5.68                      COINMAIN.ASM   8-5-2016  20:54:00         PAGE 27
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
-delay10ms                         00000120
-delayW0ms                         00000134
+_XINST_OFF_4L                     000000BF
+_XINST_ON_4L                      000000FF
+__18F2550                         00000001
+blink                             00000063
+buttonPushed                      00000064
+choosebank                        00000036
+command                           00000154
+ctrlcd                            00000300
+d0                                00000280
+d1                                00000286
+d2                                00000292
+dTcoin                            00000066
+delay10ms                         0000027C
+delayW0ms                         00000290
 delayvar                          00000060
-enablepulse                       0000007A
-initialconfigLCD                  000000C2
-main                              00000000
-mainInsertC                       0000000C
-msg1                              00000206
-msg2                              0000021C
-msg3                              00000232
-msg4                              00000248
-msg5                              0000025E
-pdata                             00000092
+enablepulse                       0000014C
+greater9                          00000064
+initccp                           00000226
+initialconfigLCD                  00000194
+main                              0000000C
+mainInsertC                       00000020
+msg1                              00000306
+msg2                              0000031C
+msg3                              00000332
+msg4                              00000348
+msg5                              0000035E
+msg6                              00000374
+ncoin                             0000038A
+pdata                             00000164
 portasdigital                     0x0F
 portsAsDigital                    0x0F
-read1                             0000005C
-read2                             00000042
-readbutton                        00000026
-set1                              000000B4
-setLCDup                          000000A2
+read1                             0000010A
+read2                             000000F0
+readbutton                        000000D0
+rr1                               00000120
+se1                               0000005C
+separateC                         00000054
+set1                              00000186
+setLCDup                          00000174
+setbutton                         00000276
+show1                             000000C6
+showMoney                         0000006C
+showd                             000000AA
+showu                             000000B8
+uTcoin                            00000067
 
 Errors   :     0
 Warnings :     0 reported,     0 suppressed
