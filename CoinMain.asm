@@ -123,7 +123,7 @@ showMoney:
     
     movlw 0x05
     mulwf Tcoin
-    movff PRODL,time
+    movff PRODL,time ; calc the product
     call separateT
     call dirnum ; point numbers
     movf ttime,W
@@ -193,7 +193,7 @@ readbutton:
     call read1 ; return the number of the button pushed
     clrf TRISB ; data direction
     movwf buttonPushed ; save the return var in this. According to the bit 
-    movlw T3LED 
+    movlw T3LED    
     movwf LATB ;LEDsOFF 'colors'A
     clrf LATA ;OFF Anode
     btfsc buttonPushed,0 ;test if button 1 has been pushed
@@ -207,6 +207,12 @@ read2:    btg Blue ;blink the LED that represent the button that has been pushed
     call delayW0ms
     decfsz blink
     bra read2
+    call targetbank
+    movlw d'100' ;Show the message for 1s
+    call delayW0ms
+    call showthanks
+    movlw d'100' ;Show the message for 1s
+    call delayW0ms
     movlw T3LED 
     movwf LATB ;turn off leds 'Colors'
     bsf LED1 ;turn on LEDs of red color
@@ -231,7 +237,44 @@ rr1:
     btfsc Pulsador3
     retlw 4
     bra read1
+;***************************************************** GO TO THE BANK X
+targetbank:
+    movlw CLEARSCREEN
+    call command
+    movlw THIRDLINE
+    call command
+    movlw low msg6
+    movwf TBLPTRL
+    movlw high msg6
+    movwf TBLPTRH
+    movlw upper msg6
+    movwf TBLPTRU
+    call LCD1
+    call banknumber
+    call pdata
+    return
+
+banknumber:    
+    btfsc buttonPushed,0
+    retlw '1'
+    btfsc buttonPushed,1
+    retlw '2'
+    btfsc buttonPushed,2
+    retlw '3'
+    return 
     
+;*******************************************SHOW THANKS SUBRUTINE
+showthanks:
+    movlw THIRDLINE
+    call command
+    movlw low msg7
+    movwf TBLPTRL
+    movlw high msg7
+    movwf TBLPTRH
+    movlw upper msg7
+    movwf TBLPTRU
+    call LCD1
+    return
 ;****************************** INITIAL CONFIGURATION LEDs AND BUTTONS SUBRUTINE   
 LEDsRed:
     ;clrf LATA ; setting initial value of LATA
@@ -448,13 +491,14 @@ d2:    call delay10ms
     return 
     
 ;********************************************************************DATA VECTOR
-    org 0x300
+    org 0x500
 ctrlcd:  db  MODE8BIT5x8M,DISPLAYON,CLEARSCREEN,FIRSTLINE,0  ;Comandos a ejecutar 
 msg1:    da "      WELCOME!      ",0			    
 msg2:    da "PLEASE INSERT A COIN",0    
 msg3:    da "                    ",0
 msg4:    da "    CHOOSE A SEAT   ",0  
-msg5:    da "   1      2      3  ",0 
-msg6:    da " THANKS             ",0
-ncoin:   da "0123456789"    
+msg5:    da "   1      2      3  ",0    
+msg6:    da "DIRIGASE AL BANCO:",0
+ncoin:   da "0123456789",0
+msg7:    da "     GRACIAS        ",0   
  END
