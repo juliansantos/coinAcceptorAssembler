@@ -16,9 +16,9 @@
     #define SIGNPESOS  0x24
     
  ;***************************************PREPROCESOR DIRECTIVES LEDS AND BUTTONS
- #define Pulsador1 PORTB,0
- #define Pulsador2 PORTB,1
- #define Pulsador3 PORTB,2 
+ #define Pulsador1 PORTC,5
+ #define Pulsador2 PORTC,4
+ #define Pulsador3 PORTC,1 
  #define Red LATB,3
  #define Green LATB,4
  #define Blue LATB,5
@@ -27,9 +27,11 @@
  #define LED3 LATA,2
  #define portasdigital 0x0F
  #define T3LED b'00111000'; COLORS
+ #define TRISButtons b'00000000'
  
- ;********************************************PREPROCESOR DIRECTIVES FOR CAPTURE
-
+ ;********************************************PREPROCESOR DIRECTIVES FOR UART
+    #define BR9600 0x19  ; Actually it should be 25.2
+    #define ASYNH8b b'00100100' ; Asyncronous mode, high speed, enable 
  
 
     CBLOCK 0x60
@@ -42,8 +44,12 @@
     FLAG  ; if it has been ingresed a coin 
     FLAG2 ; flag if it has been produced a interrupt
     time
-    utime
-    ttime
+    utime ; units of time
+    ttime ; tens of time
+    ctime  ; hundreds of time
+    clc; only is executed one time
+    txdata
+    nsend ;number of times that txdata is send
     ENDC
     
     org 0
@@ -63,11 +69,11 @@ mainInsertC:
     call LCDInsertC ;Insert a Coin
     movlw 0x50 
     call delayW0ms ;170ms delay
-    call LCDNInsertC
+    call LCDNInsertC   
+    
     tstfsz Tcoin 
     bra choosebank ; It has been added a coin 
     bra mainInsertC
-    ;'initial config' mostrar en lcd el dinero que se ha ingresado=TIME,  seleccione el banco que desea utilizar 1  2	3 
     bra main
     
 choosebank: ;display and shows the messages when a coin has been ingresed
@@ -101,8 +107,14 @@ greater9: ;-------------------------if the total count is greater than 1000
 showMoney:
     clrf FLAG2
     call dirnum
-    movlw FIRST4LINE
-    call command
+    movlw ' '
+    call pdata
+    movlw ' '
+    call pdata
+    movlw ' '
+    call pdata
+    movlw ' '
+    call pdata
     movlw SIGNPESOS
     call pdata
     tstfsz dTcoin
@@ -125,11 +137,14 @@ showMoney:
     mulwf Tcoin
     movff PRODL,time ; calc the product
     call separateT
-    call dirnum ; point numbers
+    call dirnum ; point numbers from 0
+    movf ctime,W
+    call showdt ;show centenas
+    call dirnum ; point numbers from 0
     movf ttime,W
     call showdt ;show tens
+    call dirnum ; point numbers from 0
     movf utime,W
-    call dirnum ; point numbers
     call showut ;show units
     movlw 'm'
     call pdata
@@ -140,14 +155,30 @@ showMoney:
     return
 
 separateT:
+    clrf ctime
     clrf utime
     clrf ttime
     movff time,utime
+    call sep0
+    call sep1
+    return
+    
+sep0:movlw d'99'
+    cpfsgt utime
+    return 
+    bra greater100t
+    
 sep1:    movlw 0x09
     cpfsgt utime
     return 
     bra greater9t
-       
+    
+greater100t:
+    movlw d'100'
+    subwf utime,F
+    incf ctime,F
+    bra sep0
+    
 greater9t: ;-------------------------if the total count is greater than 1000    
     movlw 0x0A
     subwf utime,F
@@ -163,7 +194,7 @@ showdt:
     call show1
     return
 showu:    
-    movf uTcoin,W ;decenas
+    movf uTcoin,W ;unidades
 showut:    
     addwf TBLPTRL
     btfsc STATUS,C
@@ -208,17 +239,19 @@ read2:    btg Blue ;blink the LED that represent the button that has been pushed
     decfsz blink
     bra read2
     call targetbank
-    movlw d'100' ;Show the message for 1s
+    movlw d'200' ;Show the message for 1s
     call delayW0ms
     call showthanks
     movlw d'100' ;Show the message for 1s
     call delayW0ms
+    call TXSUB
     movlw T3LED 
     movwf LATB ;turn off leds 'Colors'
     bsf LED1 ;turn on LEDs of red color
     bsf LED2
     bsf LED3
     bcf Red
+    setf clc
     return    
 read1:;--------------------------This won't end until one button has been pushed
     btfss FLAG2,7 ; 7 JAJA LOL XD
@@ -226,7 +259,7 @@ read1:;--------------------------This won't end until one button has been pushed
     clrf TRISB
     call separateC 
     call showMoney
-    movlw b'00000111'                                 ;
+    movlw TRISButtons                               ;
     movwf TRISB ; setting data direction of PORTB     --~!
     call LEDsGreen
 rr1:   
@@ -338,15 +371,22 @@ set1:    TBLRD*+
     
 ;***************************************SET UP AND INITIALIZATION MCU SUBROUTINE     
 initialconfigLCD: 
+    bsf OSCCON,6
+    bsf OSCCON,5
+    bcf OSCCON,4 ;For select 4MHZ clock
+    bcf UCON,3 ; Disenable USB Module, for use pins C4 and C5
+    bsf UCFG,3 ;
+    
     movlw portsAsDigital
     movwf ADCON1 ;Ports as digital instead of analogic
     clrf TRISA  ;PortA as digital output
     clrf LATA  ;Initializing PortA = '0'
     clrf TRISB ;PortB as digital output 
     clrf LATB ;Initializing PortB 
-    movlw b'00000100'
+    movlw b'00110110'
     movwf TRISC ; data direction PortC
     clrf LATC
+    setf clc
     return 
     
 ;****************************************************************INITIAL MESSAGE    
@@ -433,6 +473,8 @@ initccp:
     return
 ;***************************************************CCP INTERRUPT SERVICE RUTINE    
 CCPISR:
+    tstfsz clc
+    call clear
     setf FLAG2
     clrf TRISB ; In the case of button input
     movlw 0x19
@@ -447,29 +489,63 @@ CCPISR:
     btfsc PIR1,CCP1IF
     bra S500; Coin value = 200
       
-S500;---------------------------------------------------------500 COIN SUBRUTINE
+S500:;---------------------------------------------------------500 COIN SUBRUTINE
     btg LATC,RC6
     movlw 0x05
     addwf Tcoin,F
     bcf PIR1,CCP1IF ; Clear Flag CCP1 Module
-    btfsc FLAG,1
-    call setbutton
+    bsf FLAG,1
     retfie 1 ; restore W and Status register from shadow resgisters
     
-S200;---------------------------------------------------------200 COIN SUBRUTINE
+S200:;---------------------------------------------------------200 COIN SUBRUTINE
     btg LATC,RC6
     movlw 0x02
     addwf Tcoin,F
     bcf PIR1,CCP1IF ; Clear Flag CCP1 Module
-    btfsc FLAG,1
-    call setbutton
+    bsf FLAG,1
     retfie 1 ;restore W and Status register from shadow registers
 
-setbutton:
-    movlw b'00000111'                      
-    movwf TRISB ; setting data direction of PORTB
+clear:
+    movlw CLEARSCREEN
+    call command
+    clrf clc
     return
+;****************************************************************USART SUBRUTINE    
+TXSUB:
+    bcf INTCON,GIE ; turn off the interruptions for a moment 
+    bcf BAUDCON,BRG16 ; Baud rate generator 8 bits 'old school'
+    movlw ASYNH8b
+    movwf TXSTA ;
+    movlw BR9600 
+    movwf SPBRG ;Charging the adecuate value to generate 9600 bauds
+    bcf TRISC,TX ;Setting data direction for tx pin 
+    bsf RCSTA,SPEN; enabling tx pin
     
+    clrf txdata
+    movff Tcoin,txdata	    ;xxXXXXXX
+    bcf txdata,7 ;equipos
+    bcf txdata,6 ;equipos
+    btfsc buttonPushed,0    ;01 bank1
+    bsf txdata,6
+    btfsc buttonPushed,1    ;10 bank2
+    bsf txdata,7
+    btfsc buttonPushed,2    ;11 bank3
+    bsf txdata,7
+    btfsc buttonPushed,2
+    bsf txdata,6
+
+    movlw 0x1E
+    movwf nsend
+senddata:    
+    movf txdata,W
+wait:    btfss PIR1,TXIF
+    bra wait
+    movwf TXREG
+    decfsz nsend
+    bra senddata
+    bsf INTCON,GIE ; turn on the interruptions 
+    ;goto $
+    return
 ;***************************************************************DELAY SUBRUTINES   
 delay10ms:  ;4MHz frecuency oscillator
     movlw d'84'  ;A Value
