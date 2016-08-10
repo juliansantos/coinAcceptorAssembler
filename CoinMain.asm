@@ -39,15 +39,12 @@
     blink ; number of times of blinking of a led
     buttonPushed ; button that has been pushed
     Tcoin ; total acumulate coins
-    dTcoin ; tens of the total coin ingresed
-    uTcoin ; units of the total coin ingresed
-    FLAG  ; if it has been ingresed a coin 
+    coin:3 ;units, tens and hundred of time
+    FLAG ; Only is clear one time to accelerate a proccess of displaying
     FLAG2 ; flag if it has been produced a interrupt
-    time
-    utime ; units of time
-    ttime ; tens of time
-    ctime  ; hundreds of time
-    clc; only is executed one time
+    time:2 ; minutes and hundreds of time 
+    Stime:4
+    clc; Only is executed one time
     txdata
     nsend ;number of times that txdata is send
     ENDC
@@ -60,154 +57,237 @@
 main:
     call initialconfigLCD ; get ready MCU to send data to display
     call setLCDup ; initial configuration for LCD    
-    call LCDCover ;Main Cover
-    call initccp ; initialize interruption for CCP
+    call initccp ; initialize interruption for CCP   
+    
+rein: call LCDCover ;Subrutina to reinit the proccess of inserting coins   
     call LEDsRed ; initial configuration for use LEDs 
-    ;**** Here must be there the code initializate the interruption TO CALL READ BUTTON
-    ;call readbutton ;
+    clrf FLAG
+    clrf Tcoin
 mainInsertC: 
     call LCDInsertC ;Insert a Coin
     movlw 0x50 
     call delayW0ms ;170ms delay
     call LCDNInsertC   
-    
-    tstfsz Tcoin 
-    bra choosebank ; It has been added a coin 
-    bra mainInsertC
-    bra main
+    bra mainInsertC ;Repet cycle until a interruption. 
     
 choosebank: ;display and shows the messages when a coin has been ingresed
-    call LCDBank ; shows a message
+    setf FLAG ; To indicate that a interruption has occurred already
+    call LCDBank ; shows a message of shoosing banks
     call separateC ; separate a number
-    call showMoney
-    call LEDsGreen
+    call showMoney ; Display the count money
+    call showtime ; Display the time corresponding to the money
+    movf time,W
+    movf time+1,W
+    call LEDsGreen ; Shows the banks that are enable
     call readbutton
-    ;call send data to servo
-    clrf Tcoin ; esta linea va en la anterior subrutina
-    clrf FLAG
-   ; goto $
     return
-;****************************Separation of units and tens of the count subrutine
+;****************************Separation of the count money 'BCD' subrutine
 separateC:
-    clrf uTcoin
-    clrf dTcoin
+    clrf coin
+    clrf coin+1
+    clrf coin+2
     movf Tcoin,W
-    movwf uTcoin
-se1:    movlw 0x09
-    cpfsgt uTcoin
+    movwf coin
+se11:   movlw d'99'; decenas
+    cpfsgt coin
+    bra se1 
+    bra greater99  ;centenas
+se1:    movlw 0x09; decenas
+    cpfsgt coin
     return 
     bra greater9
        
 greater9: ;-------------------------if the total count is greater than 1000    
     movlw 0x0A
-    subwf uTcoin,F
-    incf dTcoin,F
+    subwf coin,F
+    incf coin+1,F
     bra se1
-;****************************************show the money subrutine
+greater99: ;-------------------------if the total count is greater than 1000    
+    movlw d'100'
+    subwf coin,F
+    incf coin+1,F
+    bra se11    
+;********************************************************DISPLAY MONEY SUBRUTINE
 showMoney:
+    movlw FIRSTLINE
+    call command
     clrf FLAG2
-    call dirnum
-    movlw ' '
+    movlw ' ' ;Display a backspace
     call pdata
-    movlw ' '
+    movlw ' ' ;Display a backspace
     call pdata
-    movlw ' '
+    movlw ' ' ;Display a backspace
     call pdata
-    movlw ' '
+    movlw ' ' ;Display a backspace
     call pdata
-    movlw SIGNPESOS
-    call pdata
-    tstfsz dTcoin
+    movlw SIGNPESOS ;Display a pesos sign
+    call pdata 
+    
+    tstfsz coin+2 ;If hundreds are zero then not show this number 
+    call showc 
+    movf coin+1,W  ;If hundreds and tens are zero then not display neither
+    addwf coin+1,W
+    btfss STATUS,Z 
     call showd ;show tens
-    call dirnum ; point numbers
     call showu ;show units
     
-    movlw '0'
+    movlw '0' ;Display zeros of the money
     call pdata
     movlw '0'
     call pdata
-    movlw ' '
-    call pdata
-    movlw ' '
-    call pdata
-    movlw ' '
-    call pdata
+    return
     
-    movlw 0x05
-    mulwf Tcoin
-    movff PRODL,time ; calc the product
-    call separateT
-    call dirnum ; point numbers from 0
-    movf ctime,W
-    call showdt ;show centenas
-    call dirnum ; point numbers from 0
-    movf ttime,W
-    call showdt ;show tens
-    call dirnum ; point numbers from 0
-    movf utime,W
-    call showut ;show units
-    movlw 'm'
-    call pdata
-    movlw 'i'
-    call pdata
-    movlw 'n'
-    call pdata
+;****************************************************SEPARATION MONEY SUBRUTINES    
+showc:  
+    call dirnum
+    movf coin+2,W ;cetenas   
+    call show1
+    return
+showd:
+    call dirnum
+    movf coin+1,W ;decenas   
+    call show1
+    return
+showu: 
+    call dirnum
+    movf coin,W ;unidades  
+    call show1
     return
 
-separateT:
-    clrf ctime
-    clrf utime
-    clrf ttime
-    movff time,utime
-    call sep0
-    call sep1
+;*****************************************************************MOSTRAR TIEMPO
+showtime:   
+    movlw SECONDLINE
+    call command
+    clrf time
+    clrf time+1
+    movlw 0x05
+    mulwf Tcoin ; Making multiplication for five
+    btfsc PRODH,2 ;17h 4min
+    call t2
+    btfsc PRODH,1 ;8h 32min
+    call t1
+    btfsc PRODH,0 ;4h 16min
+    call t0
+    
+    movf PRODL,W
+    addwf time,F
+    btfsc STATUS,C ; was it greater than 256?
+    call t1
+    
+    movlw 0x3B 
+cmp60:    cpfslt time
+    bra sub60
+    
+    call separate_time1
+    call separate_time2
+    ;movlw 0x05
+    movf Stime,W
+    movf Stime+1,W
+    movf Stime+2,W
+    movf Stime+3,W
+    call showtime1t
+    call showtime1u
+    movlw ' '
+    call pdata
+    call showtimet
+    call showtimeu
+    movlw ' '
+    call pdata
+    return
+showtime1t:
+    call dirnum
+    movf Stime+3,W
+    tstfsz Stime+3
+    call show1
+    return
+showtime1u:
+    call dirnum
+    movf Stime+2,W
+    tstfsz Stime+2
+    call show1
+    return
+showtimet:
+    call dirnum
+    movf Stime+1,W
+    tstfsz Stime+1
+    call show1
+    return
+showtimeu:
+    call dirnum
+    movf Stime,W
+    tstfsz Stime
+    call show1
+    return    
+    
+separate_time1:
+    clrf Stime+2;Units hours
+    clrf Stime+3;Tens hours 
+    
+    movf time+1,W
+    movwf Stime+2
+sepa1:    movlw 0x09
+    cpfslt Stime+2
+    bra gt10
     return
     
-sep0:movlw d'99'
-    cpfsgt utime
-    return 
-    bra greater100t
+separate_time2:  
+    clrf Stime;Units hours
+    clrf Stime+1;Tens hours 
     
-sep1:    movlw 0x09
-    cpfsgt utime
-    return 
-    bra greater9t
-    
-greater100t:
-    movlw d'100'
-    subwf utime,F
-    incf ctime,F
-    bra sep0
-    
-greater9t: ;-------------------------if the total count is greater than 1000    
+    movf time,W
+    movwf Stime
+sepa2:    movlw 0x09
+    cpfslt Stime
+    bra gt12
+    return    
+ 
+gt10: ;greater than 10
     movlw 0x0A
-    subwf utime,F
-    incf ttime,F
-    bra sep1
+    subwf Stime+2
+    incf Stime+3,F
+    bra sepa1 
     
-showd:  
-    movf dTcoin,W ;decenas
-showdt:    
-    addwf TBLPTRL
-    btfsc STATUS,C
-    incf TBLPTRH,F
-    call show1
+gt12: ;greater than 10
+    movlw 0x0A
+    subwf Stime,F
+    incf Stime+1,F
+    bra sepa2     
+    
+sub60:
+    movlw d'60'
+    subwf time,F ; sub 60 from time
+    incf time+1,F
+    bra cmp60 
+    
+t2:
+    movlw d'17' ;17 hours and 4 minutes
+    movwf time+1
+    movlw d'4'
+    movwf time
     return
-showu:    
-    movf uTcoin,W ;unidades
-showut:    
-    addwf TBLPTRL
-    btfsc STATUS,C
-    incf TBLPTRH,F
-    call show1
+t1:
+    movlw d'8' ;8 hours and 4 minutes
+    addwf time+1,F
+    movlw d'32'
+    addwf time,F
     return
+t0:    
+    movlw d'4' ;4 hours and 4 minutes
+    addwf time+1,F
+    movlw d'16'
+    addwf time,F
+    return
+;*****************************************************SUBRUTINE FOR SHOW NUMBERS    
 show1:
-    TBLRD* ;move de data to TABLAT
+    addwf TBLPTRL
+    btfsc STATUS,C
+    incf TBLPTRH,F
+    TBLRD* ;move de data to TABLAT 
     movf TABLAT,W
     call pdata
     return
     
-;****************************subrutien to point direction numbers
+;*****************************************************POINT TO NUMBERS SUBRUTINE
 dirnum:    
     movlw low ncoin
     movwf TBLPTRL
@@ -218,11 +298,9 @@ dirnum:
     return
 ;***************************************************** READING BUTTONS SUBRUTINE    
 readbutton:
-    setf FLAG ; To indicate that has been ingresed a coin
     movlw 0x0A
     movwf blink ; init var blink
     call read1 ; return the number of the button pushed
-    clrf TRISB ; data direction
     movwf buttonPushed ; save the return var in this. According to the bit 
     movlw T3LED    
     movwf LATB ;LEDsOFF 'colors'A
@@ -252,13 +330,14 @@ read2:    btg Blue ;blink the LED that represent the button that has been pushed
     bsf LED3
     bcf Red
     setf clc
-    return    
+    bra rein  
 read1:;--------------------------This won't end until one button has been pushed
     btfss FLAG2,7 ; 7 JAJA LOL XD
-    bra rr1
+    bra rr1 ; only execute the following code once time, couse of a interruption
     clrf TRISB
     call separateC 
     call showMoney
+    call showtime 
     movlw TRISButtons                               ;
     movwf TRISB ; setting data direction of PORTB     --~!
     call LEDsGreen
@@ -296,7 +375,7 @@ banknumber:
     retlw '3'
     return 
     
-;*******************************************SHOW THANKS SUBRUTINE
+;**********************************************************SHOW THANKS SUBRUTINE
 showthanks:
     movlw THIRDLINE
     call command
@@ -310,7 +389,6 @@ showthanks:
     return
 ;****************************** INITIAL CONFIGURATION LEDs AND BUTTONS SUBRUTINE   
 LEDsRed:
-    ;clrf LATA ; setting initial value of LATA
     movlw T3LED
     movwf LATB ;LEDsOFF
     bsf LED1
@@ -326,7 +404,7 @@ LEDsGreen:
     bsf LED1
     bsf LED2
     bsf LED3
-    bcf Green ; Turn On the LEDs in RED COLOR
+    bcf Green ; Turn On the LEDs in GREEN COLOR
     return    
     
 ;****************************************************************LCD SUBRUOTINES     
@@ -387,11 +465,22 @@ initialconfigLCD:
     movwf TRISC ; data direction PortC
     clrf LATC
     setf clc
+    
+    bcf BAUDCON,BRG16 ; Baud rate generator 8 bits 'old school'
+    movlw ASYNH8b
+    movwf TXSTA ;
+    movlw BR9600 
+    movwf SPBRG ;Charging the adecuate value to generate 9600 bauds
+    bcf TRISC,TX ;Setting data direction for tx pin 
+    bsf RCSTA,SPEN; enabling tx pin
+   
     return 
     
 ;****************************************************************INITIAL MESSAGE    
 LCDCover:   
     ;*-------------------Show Welcome Line 1
+    movlw FIRSTLINE
+    call command
     movlw low msg1
     movwf TBLPTRL
     movlw high msg1
@@ -467,23 +556,16 @@ initccp:
     bcf PIR1,CCP1IF
     bsf PIE1,CCP1IE; Enabling interrupt for CCP1
     bsf INTCON,PEIE; Enabling peripheral interrupts
-    bsf INTCON,GIE; Enabling global interruptions
-    clrf Tcoin
-    clrf FLAG
+    bsf INTCON,GIE; Enabling global interruptions 
     return
 ;***************************************************CCP INTERRUPT SERVICE RUTINE    
 CCPISR:
-    tstfsz clc
+    tstfsz clc ;for clear the screen
     call clear
-    setf FLAG2
-    clrf TRISB ; In the case of button input
-    movlw 0x19
-    call delayW0ms ; 25ms delay subrutine
+    setf FLAG2 ;For data
     bcf PIR1,CCP1IF
-    movlw 0x19
+    movlw 0x1C
     call delayW0ms ; 25ms delay subrutine
-;    movlw CLEARSCREEN
-;    call command
     btfss PIR1,CCP1IF
     bra S200 ; Coin value =500 
     btfsc PIR1,CCP1IF
@@ -494,32 +576,45 @@ S500:;---------------------------------------------------------500 COIN SUBRUTIN
     movlw 0x05
     addwf Tcoin,F
     bcf PIR1,CCP1IF ; Clear Flag CCP1 Module
-    bsf FLAG,1
-    retfie 1 ; restore W and Status register from shadow resgisters
+    
+    tstfsz FLAG
+    retfie 1
+    
+    movlw UPPER choosebank ; modifying stack
+    movwf TOSU
+    movlw HIGH choosebank
+    movwf TOSH 
+    movlw LOW choosebank
+    movwf TOSL 
+    retfie 1
+     ; restore W and Status register from shadow resgisters
     
 S200:;---------------------------------------------------------200 COIN SUBRUTINE
     btg LATC,RC6
     movlw 0x02
     addwf Tcoin,F
     bcf PIR1,CCP1IF ; Clear Flag CCP1 Module
-    bsf FLAG,1
-    retfie 1 ;restore W and Status register from shadow registers
+    
+    tstfsz FLAG
+    retfie 1
+    
+    movlw UPPER choosebank ; modifying stack
+    movwf TOSU
+    movlw HIGH choosebank
+    movwf TOSH 
+    movlw LOW choosebank
+    movwf TOSL 
+    retfie 1;restore W and Status register from shadow registers
 
 clear:
     movlw CLEARSCREEN
     call command
     clrf clc
     return
+
 ;****************************************************************USART SUBRUTINE    
 TXSUB:
     bcf INTCON,GIE ; turn off the interruptions for a moment 
-    bcf BAUDCON,BRG16 ; Baud rate generator 8 bits 'old school'
-    movlw ASYNH8b
-    movwf TXSTA ;
-    movlw BR9600 
-    movwf SPBRG ;Charging the adecuate value to generate 9600 bauds
-    bcf TRISC,TX ;Setting data direction for tx pin 
-    bsf RCSTA,SPEN; enabling tx pin
     
     clrf txdata
     movff Tcoin,txdata	    ;xxXXXXXX
@@ -575,6 +670,6 @@ msg3:    da "                    ",0
 msg4:    da "    CHOOSE A SEAT   ",0  
 msg5:    da "   1      2      3  ",0    
 msg6:    da "DIRIGASE AL BANCO:",0
-ncoin:   da "0123456789",0
+ncoin:   da "0123456789abcdefghijklmnopqrst",0
 msg7:    da "     GRACIAS        ",0   
  END
